@@ -23,13 +23,9 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-lg-6 col-12 d-none">
-                    <div class="form-group">
+                <div class="col-lg-6 col-12">
+                    <div class="form-group divsaida">
                         <label>Saída:</label><br/>
-                        <input type="checkbox" id="ckBTC" class="ckmoeda" value="BTC" disabled> BTC
-                        <input type="checkbox" id="ckBNB" class="ckmoeda" value="BNB"> BNB
-                        <input type="checkbox" id="ckETH" class="ckmoeda" value="ETH"> ETH
-                        <input type="checkbox" id="ckUSDT" class="ckmoeda" value="USDT"> USDT
                     </div>
                 </div>
             </div>
@@ -55,30 +51,37 @@
             </table>
         </div>
     </div>
- 
+    
+    <script src="assets/jquery.sumoselect.min.js"></script>
+    <link href="assets/sumoselect.css" rel="stylesheet" />
     <script>
         var dados = {};
         var webSocket = new WebSocket('ws://localhost:8080/');
+        var saida = ['BTC', 'BNB', 'ETH', 'USDT'];
 
         $(function() {
 
+            montaSaida();
+
             $('#slentrada').on('change', function() {
-                $('.ckmoeda').prop('disabled', false);
-                $('#ck'+$('#slentrada').val()).prop('disabled', true);
-                $('#ck'+$('#slentrada').val()).prop('checked', false);
+                montaSaida();
             });
 
             $('#btenviar').off('click');
             $('#btenviar').on('click', function(e) {
                 e.preventDefault();
 
+                if ($('#slsaida').val() == null || $('#slsaida').val().length < 3 || $('#slsaida').val().length > 3) {
+                    alert('A saída precisa ter pelo três opções marcadas.');
+                    return false;
+                }
+
                 if ($('#btenviar').val() == 'Iniciar') {
-                    dados.binanceColumns = 'BNB,ETH,USDT';
-                    if ($('#slentrada').val() != 'BTC') {
-                        dados.binanceColumns = dados.binanceColumns.replace($('#slentrada').val(), 'BTC');
-                    }
-                    
+                    let saidas = 
+                    dados.binanceColumns = $('#slsaida').val().join(',');
                     dados.binanceStartingPoint = $('#slentrada').val();
+                    console.log(dados);
+                    return false;
                     connectWebSocket();
                 }
                 else {
@@ -87,6 +90,19 @@
 
             });
         });
+
+        var montaSaida = function () {
+
+            $('.SumoSelect').remove();
+            $('.divsaida').append('<select class="form-control" id="slsaida" multiple placeholder="SELECIONE"></select>');
+            saida.forEach(function(item) {
+                if (item != $('#slentrada').val()) {
+                    $('#slsaida').append('<option value="'+item+'">'+item+'</option>');
+                }
+            });
+
+            $('#slsaida').SumoSelect();
+        }
 
         var connectWebSocket = function () {
 

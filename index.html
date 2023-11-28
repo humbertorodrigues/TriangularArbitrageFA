@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.3/jquery-ui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container py-3">
+        <form>
+            <div class="row mb-3">
+                <div class="col-lg-6 col-12">
+                    <div class="form-group">
+                        <label>Entrada:</label>
+                        <select class="form-control" id="slentrada">
+                            <option value="BTC" selected>BTC</option>
+                            <option value="BNB">BNB</option>
+                            <option value="ETH">ETH</option>
+                            <option value="USDT">USDT</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-lg-6 col-12 d-none">
+                    <div class="form-group">
+                        <label>Saída:</label><br/>
+                        <input type="checkbox" id="ckBTC" class="ckmoeda" value="BTC" disabled> BTC
+                        <input type="checkbox" id="ckBNB" class="ckmoeda" value="BNB"> BNB
+                        <input type="checkbox" id="ckETH" class="ckmoeda" value="ETH"> ETH
+                        <input type="checkbox" id="ckUSDT" class="ckmoeda" value="USDT"> USDT
+                    </div>
+                </div>
+            </div>
+            <input id="btenviar" class="btn btn-primary" value="Iniciar" />
+        </form>
+        <div class="table-responsive mt-3">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>STEP A</th>
+                        <th>STEP B</th>
+                        <th>STEP C</th>
+                        <th>RATE</th>
+                        <th>FEES BNB</th>
+                        <th>RATE - BNB FEE</th>
+                        <th>FEES NORMAL</th>
+                        <th>RATE - FEE</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+ 
+    <script>
+        var dados = {};
+        var webSocket = new WebSocket('ws://localhost:8080/');
+
+        $(function() {
+
+            $('#slentrada').on('change', function() {
+                $('.ckmoeda').prop('disabled', false);
+                $('#ck'+$('#slentrada').val()).prop('disabled', true);
+                $('#ck'+$('#slentrada').val()).prop('checked', false);
+            });
+
+            $('#btenviar').off('click');
+            $('#btenviar').on('click', function(e) {
+                e.preventDefault();
+
+                if ($('#btenviar').val() == 'Iniciar') {
+                    dados.binanceColumns = 'BNB,ETH,USDT';
+                    if ($('#slentrada').val() != 'BTC') {
+                        dados.binanceColumns = dados.binanceColumns.replace($('#slentrada').val(), 'BTC');
+                    }
+                    
+                    dados.binanceStartingPoint = $('#slentrada').val();
+                    connectWebSocket();
+                }
+                else {
+                    webSocket.close();
+                }
+
+            });
+        });
+
+        var connectWebSocket = function () {
+
+            webSocket.close();
+            var connected = false;
+            webSocket = new WebSocket('ws://localhost:8080/');            
+
+            $('#btenviar').removeClass('btn-primary');
+            $('#btenviar').addClass('btn-warning');
+            $('#btenviar').val('Parar');
+
+            webSocket.onerror = function(event) {
+                console.log(event);
+            };
+
+            webSocket.onopen = function(event) {
+                console.log(event);
+                connected = true;
+            };
+
+            webSocket.onmessage = function(event) {
+                //console.log(JSON.parse(event.data));
+                var json = JSON.parse(event.data);
+                montaTabela(json);
+            };
+
+            webSocket.onclose = function(event) {
+                $('#btenviar').removeClass('btn-warning');
+                $('#btenviar').addClass('btn-primary');
+                $('#btenviar').val('Iniciar');
+            };
+
+            var interval = setInterval(function () {
+                if (connected) {
+                    webSocket.send(JSON.stringify(dados));
+                    clearInterval(interval);
+                }
+            },2000);
+        }
+
+        var montaTabela = function (data) {
+            let tbody = $('table tbody');
+            tbody.html('');
+            data.forEach(function (ticker) {
+                var color = 'green';
+                if (ticker.rate && ticker.rate < 1) color = 'red';
+
+                var rate = ((ticker.rate - 1)* 100);
+                var fees1 = rate * 0.05; //bnb
+                var fRate1 = rate - fees1;
+                
+                var fees2 = rate * 0.1; //other
+                var fRate2 = rate - fees2;
+
+                let html = '<tr>';
+                html += '<td>'+ticker.a.key+'</td>';
+                html += '<td>'+ticker.b.stepFrom+'</td>';
+                html += '<td>'+ticker.c.stepFrom+'</td>';
+                html += '<td>'+rate.toFixed(3).toString()+'%</td>';
+                html += '<td>'+fees1.toFixed(3).toString()+'%</td>';
+                html += '<td style="color: '+color+'">'+fRate1.toFixed(3).toString()+'%</td>';
+            
+                html += '<td>'+fees2.toFixed(3).toString()+'%</td>';
+                html += '<td style="color: '+color+'">'+fRate2.toFixed(3).toString()+'%</td>';
+
+                tbody.append(html);  
+            });                  
+        }
+    </script>
+</body>
+</html>

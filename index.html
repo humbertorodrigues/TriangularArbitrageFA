@@ -7,6 +7,26 @@
 
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.3/jquery-ui.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <link href="https://cdn.rawgit.com/harvesthq/chosen/gh-pages/chosen.min.css" rel="stylesheet"/>
+    <style>
+        .chosen-choices {
+            display: block;
+            width: 100%;
+            padding: 0.375rem 0.75rem !important;
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #212529;
+            background-color: #fff !important;
+            background-clip: padding-box;
+            border: 1px solid #ced4da !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none;
+            border-radius: 0.25rem;
+            transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+        }
+    </style>
 </head>
 <body>
     <div class="container py-3">
@@ -24,8 +44,10 @@
                     </div>
                 </div>
                 <div class="col-lg-6 col-12">
-                    <div class="form-group divsaida">
+                    <div class="form-group">
                         <label>Saída:</label><br/>
+						<div class="divsaida">
+						</div>
                     </div>
                 </div>
             </div>
@@ -52,16 +74,20 @@
         </div>
     </div>
     
-    <script src="assets/jquery.sumoselect.min.js"></script>
-    <link href="assets/sumoselect.css" rel="stylesheet" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="https://cdn.rawgit.com/harvesthq/chosen/gh-pages/chosen.jquery.min.js"></script>
     <script>
         var dados = {};
         var webSocket = new WebSocket('ws://localhost:8080/');
-        var saida = ["BTC","LTC","ETH","NEO","BNB","QTUM","EOS","SNT","BNT","GAS","BCC","USDT","HSR","OAX","DNT","MCO","ICN","ZRX","OMG","WTC","YOYO","LRC","TRX","SNGLS","STRAT","BQX","FUN","KNC","CDT","XVG","IOTA","SNM","LINK","CVC","TNT","REP","MDA","MTL","SALT","NULS","SUB","STX","MTH","ADX","ETC","ENG","ZEC","AST","GNT","DGD","BAT","DASH","POWR","BTG","REQ","XMR","EVX","VIB","ENJ","VEN","ARK","XRP","MOD","STORJ","KMD","RCN","EDO","DATA","DLT","MANA","PPT","RDN","GXS","AMB","ARN","BCPT","CND","GVT","POE","BTS","FUEL","XZC","QSP","LSK","BCD","TNB","ADA","LEND","XLM","CMT","WAVES","WABI","GTO","ICX","OST","ELF","AION","WINGS","BRD","NEBL","NAV","VIBE","LUN","TRIG","APPC","CHAT","RLC","INS","PIVX","IOST","STEEM","NANO","AE","VIA","BLZ","SYS","RPX","NCASH","POA","ONT","ZIL","STORM","XEM","WAN","WPR","QLC","GRS","CLOAK","LOOM","BCN","TUSD","ZEN","SKY","THETA","IOTX","QKC","AGI","NXS","SC","NPXS","KEY","NAS","MFT","DENT","IQ","ARDR","HOT","VET","DOCK","POLY","VTHO","ONG","PHX","HC","GO","PAX","RVN","DCR","USDC","MITH","BCHABC","BCHSV","REN","BTT","USDS","FET","TFUEL","CELR","MATIC","ATOM","PHB","ONE","FTM","BTCB","USDSB","CHZ","COS","ALGO","ERD","DOGE","BGBP","DUSK","ANKR","WIN","TUSDB","COCOS","PERL","TOMO","BUSD","BAND","BEAM","HBAR","XTZ","NGN","DGB","NKN","GBP","EUR","KAVA","RUB","UAH","ARPA","TRY","CTXC","AERGO","BCH","TROY","BRL","VITE","FTT","AUD","OGN","DREP","BULL","BEAR","ETHBULL","ETHBEAR","XRPBULL","XRPBEAR","EOSBULL","EOSBEAR","TCT","WRX","LTO","ZAR","MBL","COTI","BKRW","BNBBULL","BNBBEAR","HIVE","STPT","SOL","IDRT","CTSI","CHR","BTCUP","BTCDOWN","HNT","JST","FIO","BIDR","STMX","MDT","PNT","COMP","IRIS","MKR","SXP","SNX","DAI","ETHUP","ETHDOWN","ADAUP","ADADOWN","LINKUP","LINKDOWN","DOT","RUNE","BNBUP","BNBDOWN","XTZUP","XTZDOWN","AVA","BAL","YFI","SRM","ANT","CRV","SAND","OCEAN","NMR","LUNA","IDEX","RSR","PAXG","WNXM","TRB","EGLD","BZRX","WBTC","KSM","SUSHI","YFII","DIA","BEL","UMA","EOSUP","TRXUP","EOSDOWN","TRXDOWN","XRPUP","XRPDOWN","DOTUP","DOTDOWN","NBS","WING","SWRV","LTCUP","LTCDOWN","CREAM","UNI","OXT","SUN","AVAX","BURGER","BAKE","FLM","SCRT","XVS","CAKE","SPARTA","UNIUP","UNIDOWN","ALPHA","ORN","UTK","NEAR","VIDT","AAVE","FIL","SXPUP","SXPDOWN","INJ","FILDOWN","FILUP","YFIUP","YFIDOWN","CTK","EASY","AUDIO","BCHUP","BCHDOWN","BOT","AXS","AKRO","HARD","KP3R","RENBTC","SLP","STRAX","UNFI","CVP","BCHA","FOR","FRONT","ROSE","HEGIC","AAVEUP","AAVEDOWN","PROM","BETH","SKL","GLM","SUSD","COVER","GHST","SUSHIUP","SUSHIDOWN","XLMUP","XLMDOWN","DF","JUV","PSG","BVND","GRT","CELO","TWT","REEF","OG","ATM","ASR","1INCH","RIF","BTCST","TRU","DEXE","CKB","FIRO","LIT","PROS","VAI","SFP","FXS","DODO","AUCTION","UFT","ACM","PHA","TVK","BADGER","FIS","OM","POND","ALICE","DEGO","BIFI","LINA"];
-
+        var json = {};
+        
         $(function() {
-
-            montaSaida(true);
+	
+			$.getJSON("matriz.json", function(data) {
+				json = data;
+				console.log(json);
+				montaEntrada();				
+			});
 
             $('#slentrada').on('change', function() {
                 montaSaida();
@@ -71,13 +97,12 @@
             $('#btenviar').on('click', function(e) {
                 e.preventDefault();
 
-                if ($('#slsaida').val() == null || $('#slsaida').val().length < 3 || $('#slsaida').val().length > 3) {
+                if ($('#slsaida').val() == null || $('#slsaida').val().length < 1) {
                     alert('A saída precisa ter pelo três opções marcadas.');
                     return false;
                 }
 
                 if ($('#btenviar').val() == 'Iniciar') {
-                    let saidas = 
                     dados.binanceColumns = $('#slsaida').val().join(',');
                     dados.binanceStartingPoint = $('#slentrada').val();
                     //console.log(dados);
@@ -89,29 +114,32 @@
 
             });
         });
+		
+		var montaEntrada = function () {
+			$('#slentrada').html('');
+			for (const [key, value] of Object.entries(json)) {
+				let selected = '';
+				if (key == 'ETH') {
+					selected = 'selected';
+				}
+				$('#slentrada').append('<option '+selected+' value="'+key+'">'+key+'</option>');
+			}
+			
+			montaSaida();
+		}
 
-        var montaSaida = function (primeiro = false) {
-
-            //$('.SumoSelect').remove();
-            if (primeiro) {
-                $('.divsaida').append('<select class="form-control" id="slsaida" multiple placeholder="SELECIONE"></select>');
-                saida.forEach(function(item) {
-                    if (item != $('#slentrada').val()) {
-                        $('#slsaida').append('<option value="'+item+'">'+item+'</option>');
-                    }
-                });
-                $('#slsaida').SumoSelect();
-            }
-            else {
-
-                $('#slsaida').html('');
-                saida.forEach(function(item) {
-                    if (item != $('#slentrada').val()) {
-                        $('#slsaida').append('<option value="'+item+'">'+item+'</option>');
-                    }
-                });
-                $('#slsaida')[0].sumo.reload();
-            }
+        var montaSaida = function () {
+	
+			$('.divsaida').html('');
+			$('.divsaida').append('<select class="form-control" id="slsaida" multiple data-placeholder="SELECIONE"></select>');
+			json[$('#slentrada').val()].forEach(function(item) {
+				if (item != $('#slentrada').val()) {
+					$('#slsaida').append('<option value="'+item+'">'+item+'</option>');
+				}
+			});
+			$("#slsaida").chosen({
+				no_results_text: "Oops, nothing found!"
+			})            
         }
 
         var connectWebSocket = function () {

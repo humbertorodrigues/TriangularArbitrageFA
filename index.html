@@ -32,7 +32,7 @@
     <div class="container py-3">
         <form>
             <div class="row mb-3">
-                <div class="col-lg-6 col-12">
+                <div class="col-lg-4 col-12">
                     <div class="form-group">
                         <label>Entrada:</label>
                         <select class="form-control" id="slentrada">
@@ -43,11 +43,17 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-lg-6 col-12">
+                <div class="col-lg-5 col-12">
                     <div class="form-group">
                         <label>Saída:</label><br/>
 						<div class="divsaida">
 						</div>
+                    </div>
+                </div>
+				<div class="col-lg-3 col-12">
+                    <div class="form-group">
+                        <label>Tempo de atualização:</label><br/>
+						<input id="delay" type="number" min="1" max="5" value="1" class="form-control" />
                     </div>
                 </div>
             </div>
@@ -80,7 +86,12 @@
         var dados = {};
         var webSocket = new WebSocket('ws://localhost:8080/');
         var json = {};
-        
+		var delay = 1000;
+        var intervalLiberado = setInterval(function () {
+			liberado = true;
+		}, delay);
+		var liberado = true;
+		
         $(function() {
 	
 			$.getJSON("matriz.json", function(data) {
@@ -101,14 +112,21 @@
                     alert('A saída precisa ter pelo uma opção marcada.');
                     return false;
                 }
+				
+				if ($('#delay').val() == '') {
+					$('#delay').val('1');
+				}
 
                 if ($('#btenviar').val() == 'Iniciar') {
                     dados.binanceColumns = $('#slsaida').val().join(',');
                     dados.binanceStartingPoint = $('#slentrada').val();
                     //console.log(dados);
+					delay = parseInt($('#delay').val()) * 1000;
+					console.log(delay);
                     connectWebSocket();
                 }
                 else {
+					clearInterval(intervalLiberado);
                     webSocket.close();
                 }
 
@@ -143,7 +161,11 @@
         }
 
         var connectWebSocket = function () {
-
+			clearInterval(intervalLiberado);
+			intervalLiberado = setInterval(function () {
+				liberado = true;
+			}, delay);
+					
             webSocket.close();
             var connected = false;
             webSocket = new WebSocket('ws://localhost:8080/');            
@@ -164,7 +186,9 @@
             webSocket.onmessage = function(event) {
                 //console.log(JSON.parse(event.data));
                 var json = JSON.parse(event.data);
-                montaTabela(json);
+				if (liberado) {
+					montaTabela(json);
+				}
             };
 
             webSocket.onclose = function(event) {
@@ -207,7 +231,9 @@
                 html += '<td style="color: '+color+'">'+fRate2.toFixed(3).toString()+'%</td>';
 
                 tbody.append(html);  
-            });                  
+            });
+
+			liberado = false;
         }
     </script>
 </body>

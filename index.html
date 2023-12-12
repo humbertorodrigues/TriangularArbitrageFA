@@ -96,11 +96,12 @@
 	
 			$.getJSON("matriz.json", function(data) {
 				json = data;
-				console.log(json);
+				//console.log(json);
 				montaEntrada();				
 			});
 
             $('#slentrada').on('change', function() {
+				$('.divsaida').html('<p>Carregando..</p>');
                 montaSaida();
             });
 
@@ -134,27 +135,56 @@
         });
 		
 		var montaEntrada = function () {
+		
+			let arr = [];
 			$('#slentrada').html('');
+			
 			for (const [key, value] of Object.entries(json)) {
+				arr.push(key);
+			}
+			arr.sort();
+			arr.forEach(function(item) {
 				let selected = '';
-				if (key == 'ETH') {
+				if (item == 'ETH') {
 					selected = 'selected';
 				}
-				$('#slentrada').append('<option '+selected+' value="'+key+'">'+key+'</option>');
-			}
+				$('#slentrada').append('<option '+selected+' value="'+item+'">'+item+'</option>');
+			});
 			
 			montaSaida();
 		}
 
         var montaSaida = function () {
 	
+			let options = '';
+			let indice = $('#slentrada').val();
+			let arr = [];
+			
+			for (const [key, value] of Object.entries(json)) {
+				if (key != indice) {
+					let found = value.find((element) => element == indice);
+					if (value.find((element) => element == indice) != undefined && arr.find((element) => element == indice) == undefined) {
+						arr.push(key);
+					}
+				}
+				else {
+					json[key].forEach(function(item) {
+						if (item != indice && arr.find((element) => element == indice) == undefined) {
+							arr.push(item);
+						}
+					});
+				}
+				
+			}
+			arr.sort();						
+			arr.forEach(function(item) {
+				options += '<option value="'+item+'">'+item+'</option>';
+			});
+			
 			$('.divsaida').html('');
 			$('.divsaida').append('<select class="form-control" id="slsaida" multiple data-placeholder="SELECIONE"></select>');
-			json[$('#slentrada').val()].forEach(function(item) {
-				if (item != $('#slentrada').val()) {
-					$('#slsaida').append('<option value="'+item+'">'+item+'</option>');
-				}
-			});
+			$("#slsaida").html(options);
+			
 			$("#slsaida").chosen({
 				no_results_text: "Oops, nothing found!"
 			})            

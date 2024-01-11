@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 var TradingCore = require('./lib/TradingCore');
 var DBHelpers = require('./lib/DBHelpers').DBHelpers;
 var PairRanker = require('./lib/PairRanker').PairRanker;
+const Binance = require('node-binance-api');
 
 const wss = new WebSocket.Server({ port: 8080 });
 
@@ -22,6 +23,13 @@ var exchangeAPI = {};
 
 logger.info('--- Loading Exchange API');
 
+var operando = false;
+var operador;
+var response2;
+var response3;
+var json;
+var finaliza = false;
+
 // make exchange module dynamic later
 if (process.env.activeExchange == 'binance'){
   logger.info('--- \tActive Exchange:' + process.env.activeExchange);
@@ -40,8 +48,15 @@ if (process.env.activeExchange == 'binance'){
 wss.on('connection', function connection(ws) {
   ws.on('message', function message(data) {
     try {
-      var json = JSON.parse(data);
+      json = JSON.parse(data);
       console.log(json);
+
+      if (json.fim != undefined) {
+        finaliza = true;
+        return false;
+      }
+
+      finaliza = false;
       this.dbHelpers = new DBHelpers();
       this.pairRanker = new PairRanker();
 
@@ -98,7 +113,22 @@ wss.on('connection', function connection(ws) {
           if (this.tradingCore)
             this.tradingCore.updateCandidateQueue(stream, ctrl.storage.candidates, ctrl.storage.trading.queue);
 
-          ws.send(JSON.stringify(ctrl.storage.candidates));
+          ctrl.storage.candidates.every(function (item){
+            var rate = ((item.rate - 1)* 100);
+            var fees2 = rate * 0.1; //other
+            var fRate2 = rate - fees2;
+            if (fRate2 > parseFloat(json.perc) && !operando && !finaliza) {
+              operando = true;              
+              ws.send(JSON.stringify(item));
+              operador = item;
+              opera(1);
+              return false;
+            }
+            else {
+              return true;
+            }            
+          }); 
+          //ws.send(JSON.stringify(ctrl.storage.candidates));
           // update UI with latest values per currency
           //ctrl.UI.updateArbitageOpportunities(ctrl.storage.candidates);
 
@@ -128,3 +158,93 @@ wss.on('connection', function connection(ws) {
   });
 
 });
+
+var opera = function(fase) {  
+
+  const binance = new Binance().options({
+    APIKEY: json.APIKEY, //'MbB6qWbP2yk7Pwd1pY0zvBhQBSUcBG5qn0ZBRlHnhRjBnes4dxQSCw4zL4yL7nNa',
+    APISECRET: json.APISECRET, //'FSDsSEZQHIWLlP3duXF3e4X52LchiMrl5d2XkgUibPzhEN79dQfNT7odvgMpq5ca',
+    'family': 4,
+    urls:{base:"https://testnet.binance.vision/api/"}
+  });
+
+  if (fase == 1) {
+    if (operador.a_step_type == 'BUY') {
+      binance.marketBuy(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: json.quantity} ,(error, response) => {
+        if (error != null) {
+          console.info("Error", error.body);
+        }
+        else {
+          console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
+          response2 = response;
+          opera(2)
+        }
+      });
+    }
+    else {
+      binance.marketSell(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: json.quantity} ,(error, response) => {
+        if (error != null) {
+          console.info("Error", error.body);
+        }
+        else {
+          console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
+          response2 = response;
+          opera(2)
+        }
+      });
+    }
+  }
+  else if (fase == 2) {
+
+    let quantity2 = response2.cummulativeQuoteQty - response2.fills[0].commission;
+    if (operador.a_step_type == 'BUY') {
+      quantity2 = response2.executedQty - response2.fills[0].commission;
+    }
+    if (operador.b_step_type == 'BUY') {  
+      binance.marketBuy(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: quantity2} ,(error, response) => {
+        if (error != null) {
+          console.info("Error", error.body);
+        }
+        else {
+          console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
+          response3 = response;
+          opera(3)
+        }
+      });
+    }
+    else {
+      binance.marketSell(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: json.quantity} ,(error, response) => {
+        if (error != null) {
+          console.info("Error", error.body);
+        }
+        else {
+          console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
+          response3 = response;
+          opera(3)
+        }
+      });
+    }
+  }
+  else if (fase == 3) {
+
+    let quantity3 = response3.cummulativeQuoteQty - response3.fills[0].commission;
+    if (operador.b_step_type == 'BUY') {
+      quantity2 = response2.executedQty - response2.fills[0].commission;
+    }
+    if (operador.c_step_type == 'BUY') {  
+      binance.marketBuy(operador.c_symbol, false,{type:'MARKET', quoteOrderQty: quantity3} ,(error, response) => {
+        console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
+        console.info('---------------------------');
+        operando = false;
+      });
+    }
+    else {
+      binance.marketSell(operador.c_symbol, false,{type:'MARKET', quoteOrderQty: json.quantity} ,(error, response) => {
+        console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
+        console.info('---------------------------');
+        operando = false;
+      });
+    }
+  }
+  
+}

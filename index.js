@@ -51,10 +51,10 @@ wss.on('connection', function connection(ws) {
       json = JSON.parse(data);
       console.log(json);
 
-      if (json.fim != undefined) {
-        finaliza = true;
-        return false;
-      }
+      // if (json.fim != undefined) {
+      //   finaliza = true;
+      //   return false;
+      // }
 
       finaliza = false;
       this.dbHelpers = new DBHelpers();
@@ -118,7 +118,8 @@ wss.on('connection', function connection(ws) {
             var fees2 = rate * 0.1; //other
             var fRate2 = rate - fees2;
             if (fRate2 > parseFloat(json.perc) && !operando && !finaliza) {
-              operando = true;              
+              operando = true;   
+              finaliza = true; // Vamos parar com a primeira operação           
               ws.send(JSON.stringify(item));
               operador = item;
               opera(1);

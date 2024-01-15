@@ -23,12 +23,15 @@ var exchangeAPI = {};
 
 logger.info('--- Loading Exchange API');
 
+var valorentrada = 0;
 var operando = false;
 var operador;
 var response2;
 var response3;
 var json;
 var finaliza = false;
+var filters = {};
+var retorno = {};
 
 // make exchange module dynamic later
 if (process.env.activeExchange == 'binance'){
@@ -50,11 +53,40 @@ wss.on('connection', function connection(ws) {
     try {
       json = JSON.parse(data);
       console.log(json);
-
-      // if (json.fim != undefined) {
-      //   finaliza = true;
-      //   return false;
-      // }
+      valorentrada = json.quantity;
+      
+      const binance = new Binance().options({        
+        APIKEY: json.APIKEY,
+        APISECRET: json.APISECRET,
+        'family': 4/*,
+        urls:{base:"https://testnet.binance.vision/api/"}*/
+      });      
+      
+      binance.exchangeInfo(function(error, data) {
+        for ( let obj of data.symbols ) {
+          //if (obj.symbol == 'LINAUSDT') { console.log(obj); }
+          let filtro = {status: obj.status};
+          for ( let filter of obj.filters ) {
+            if ( filter.filterType == "MIN_NOTIONAL" ) {
+              filtro.minNotional = filter.minNotional;
+            } else if ( filter.filterType == "PRICE_FILTER" ) {
+              filtro.minPrice = filter.minPrice;
+              filtro.maxPrice = filter.maxPrice;
+              filtro.tickSize = filter.tickSize;
+            } else if ( filter.filterType == "LOT_SIZE" ) {
+              filtro.stepSize = filter.stepSize;
+              filtro.minQty = filter.minQty;
+              filtro.maxQty = filter.maxQty;
+            }
+          }
+          //filters.baseAssetPrecision = obj.baseAssetPrecision;
+          //filters.quoteAssetPrecision = obj.quoteAssetPrecision;
+          filtro.orderTypes = obj.orderTypes;
+          filtro.icebergAllowed = obj.icebergAllowed;
+          filters[obj.symbol] = filtro;
+        }
+        //console.log(filters['LINAUSDT']);
+      });
 
       finaliza = false;
       this.dbHelpers = new DBHelpers();
@@ -113,6 +145,12 @@ wss.on('connection', function connection(ws) {
           if (this.tradingCore)
             this.tradingCore.updateCandidateQueue(stream, ctrl.storage.candidates, ctrl.storage.trading.queue);
 
+          if (retorno.final != undefined) {
+            retorno.valor = json.quantity;
+            retorno.valorfinal = valorentrada;
+            ws.send(JSON.stringify(retorno));
+            retorno = {};
+          }
           ctrl.storage.candidates.every(function (item){
             var rate = ((item.rate - 1)* 100);
             var fees2 = rate * 0.1; //other
@@ -122,6 +160,7 @@ wss.on('connection', function connection(ws) {
               finaliza = true; // Vamos parar com a primeira operação           
               ws.send(JSON.stringify(item));
               operador = item;
+              //console.log(item);
               opera(1);
               return false;
             }
@@ -163,17 +202,26 @@ wss.on('connection', function connection(ws) {
 var opera = function(fase) {  
 
   const binance = new Binance().options({
-    APIKEY: json.APIKEY, //'MbB6qWbP2yk7Pwd1pY0zvBhQBSUcBG5qn0ZBRlHnhRjBnes4dxQSCw4zL4yL7nNa',
-    APISECRET: json.APISECRET, //'FSDsSEZQHIWLlP3duXF3e4X52LchiMrl5d2XkgUibPzhEN79dQfNT7odvgMpq5ca',
-    'family': 4,
-    urls:{base:"https://testnet.binance.vision/api/"}
+    APIKEY: json.APIKEY,
+    APISECRET: json.APISECRET,
+    'family': 4
+    //urls:{base:"https://testnet.binance.vision/api/"}
   });
+  /*APIKEY: 'MbB6qWbP2yk7Pwd1pY0zvBhQBSUcBG5qn0ZBRlHnhRjBnes4dxQSCw4zL4yL7nNa',
+  APISECRET: 'FSDsSEZQHIWLlP3duXF3e4X52LchiMrl5d2XkgUibPzhEN79dQfNT7odvgMpq5ca',*/
 
   if (fase == 1) {
+
+    /*console.log('----Passo 1');
+    console.log(valorentrada);
+    console.log(operador.a_symbol);*/
+
     if (operador.a_step_type == 'BUY') {
-      binance.marketBuy(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: json.quantity} ,(error, response) => {
+      binance.marketBuy(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: valorentrada} ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
+          retorno.final = true;
+          retorno.error = error.body;
         }
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
@@ -183,9 +231,11 @@ var opera = function(fase) {
       });
     }
     else {
-      binance.marketSell(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: json.quantity} ,(error, response) => {
+      binance.marketSell(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: valorentrada} ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
+          retorno.final = true;
+          retorno.error = error.body;
         }
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
@@ -197,14 +247,31 @@ var opera = function(fase) {
   }
   else if (fase == 2) {
 
-    let quantity2 = response2.cummulativeQuoteQty - response2.fills[0].commission;
+    //console.log('----Passo 2');
+    let filter = filters[operador.b_symbol];
+
+    let quantity2 = response2.cummulativeQuoteQty;// - response2.fills[0].commission;       
     if (operador.a_step_type == 'BUY') {
-      quantity2 = response2.executedQty - response2.fills[0].commission;
+      quantity2 = response2.executedQty;// - response2.fills[0].commission;
     }
+    //console.log(operador.b_symbol);
+    //console.log(filter);
     if (operador.b_step_type == 'BUY') {  
+
+      quantity2 = Math.floor(quantity2 / filter.tickSize) * filter.tickSize;
+      //console.log(quantity2);
+      //quantity2 = parseFloat(quantity2).toFixed(8);
+      if (quantity2 < filter.tickSize) {
+        console.log('Quantidade mínima não atingida.');
+        retorno.final = true;
+          retorno.error = error.body;
+        return false;
+      }
       binance.marketBuy(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: quantity2} ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
+          retorno.final = true;
+          retorno.error = error.body;
         }
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
@@ -214,9 +281,21 @@ var opera = function(fase) {
       });
     }
     else {
-      binance.marketSell(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: json.quantity} ,(error, response) => {
+
+      quantity2 = Math.floor(quantity2 / filter.stepSize) * filter.stepSize;
+      console.log(quantity2);
+      ///quantity2 = parseFloat(quantity2).toFixed(8);
+      if (quantity2 < filter.minQty) {
+        console.log('Quantidade mínima não atingida.');
+        retorno.final = true;
+        retorno.error = error.body;
+        return false;
+      }
+      binance.marketSell(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: quantity2} ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
+          retorno.final = true;
+          retorno.error = error.body;
         }
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
@@ -228,22 +307,69 @@ var opera = function(fase) {
   }
   else if (fase == 3) {
 
-    let quantity3 = response3.cummulativeQuoteQty - response3.fills[0].commission;
+    console.log('----Passo 3');
+    let filter = filters[operador.c_symbol];
+
+    let quantity3 = response3.cummulativeQuoteQty;// - response3.fills[0].commission;
     if (operador.b_step_type == 'BUY') {
-      quantity2 = response2.executedQty - response2.fills[0].commission;
+      quantity3 = response3.executedQty;// - response3.fills[0].commission;
     }
+    console.log(quantity3);
+    console.log(operador.c_symbol);
+    //console.log(filter);
     if (operador.c_step_type == 'BUY') {  
+
+      quantity3 = Math.floor(quantity3 / filter.tickSize) * filter.tickSize;
+      console.log(quantity3);
+      //quantity3 = parseFloat(quantity3).toFixed(8);
+      if (quantity3 < filter.tickSize) {
+        console.log('Quantidade mínima não atingida.');
+        retorno.final = true;
+        retorno.error = error.body;
+        return false;
+      }
       binance.marketBuy(operador.c_symbol, false,{type:'MARKET', quoteOrderQty: quantity3} ,(error, response) => {
-        console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
-        console.info('---------------------------');
-        operando = false;
+        if (error != null) {
+          console.info("Error", error.body);
+          retorno.final = true;
+          retorno.error = error.body;
+        }
+        else {
+          console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
+          console.info('---------------------------');
+          valorentrada = response.executedQty;
+          operando = false;
+        }
       });
     }
     else {
-      binance.marketSell(operador.c_symbol, false,{type:'MARKET', quoteOrderQty: json.quantity} ,(error, response) => {
-        console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
-        console.info('---------------------------');
-        operando = false;
+
+      quantity3 = Math.floor(quantity3 / filter.stepSize) * filter.stepSize;
+      console.log(quantity3);
+      //quantity3 = parseFloat(quantity3).toFixed(8);
+      if (quantity3 < filter.minQty) {
+        console.log('Quantidade mínima não atingida.');
+        retorno.final = true;
+        retorno.error = error.body;
+        return false;
+      }
+
+      binance.marketSell(operador.c_symbol, false,{type:'MARKET', quoteOrderQty: quantity3} ,(error, response) => {
+        if (error != null) {
+          console.info("Error", error.body);
+          retorno.final = true;
+          retorno.error = error.body;
+        }
+        else {
+          console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
+          console.info('---------------------------');
+          valorentrada = response.cummulativeQuoteQty;
+          if (operador.b_step_type == 'BUY') {
+            valorentrada = response3.executedQty;
+          }
+          retorno.final = true;
+          operando = false;
+        }
       });
     }
   }

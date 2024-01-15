@@ -231,7 +231,7 @@ var opera = function(fase) {
       });
     }
     else {
-      binance.marketSell(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: valorentrada} ,(error, response) => {
+      binance.marketSell(operador.a_symbol,  parseFloat(valorentrada) ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
           retorno.final = true;
@@ -247,19 +247,20 @@ var opera = function(fase) {
   }
   else if (fase == 2) {
 
-    //console.log('----Passo 2');
+    console.log('----Passo 2');
     let filter = filters[operador.b_symbol];
 
-    let quantity2 = response2.cummulativeQuoteQty;// - response2.fills[0].commission;       
+    let quantity2 = response2.cummulativeQuoteQty - response2.fills[0].commission;       
     if (operador.a_step_type == 'BUY') {
-      quantity2 = response2.executedQty;// - response2.fills[0].commission;
+      quantity2 = response2.executedQty - response2.fills[0].commission;
     }
-    //console.log(operador.b_symbol);
-    //console.log(filter);
+    console.log(operador.b_symbol);
+    console.log(filter);
     if (operador.b_step_type == 'BUY') {  
 
       quantity2 = Math.floor(quantity2 / filter.tickSize) * filter.tickSize;
-      //console.log(quantity2);
+      quantity2 = quantity2.toFixed(8);
+      console.log(quantity2);
       //quantity2 = parseFloat(quantity2).toFixed(8);
       if (quantity2 < filter.tickSize) {
         console.log('Quantidade mínima não atingida.');
@@ -283,6 +284,7 @@ var opera = function(fase) {
     else {
 
       quantity2 = Math.floor(quantity2 / filter.stepSize) * filter.stepSize;
+      quantity2 = quantity2.toFixed(8);
       console.log(quantity2);
       ///quantity2 = parseFloat(quantity2).toFixed(8);
       if (quantity2 < filter.minQty) {
@@ -291,7 +293,7 @@ var opera = function(fase) {
         retorno.error = error.body;
         return false;
       }
-      binance.marketSell(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: quantity2} ,(error, response) => {
+      binance.marketSell(operador.b_symbol,  parseFloat(quantity2) ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
           retorno.final = true;
@@ -310,9 +312,9 @@ var opera = function(fase) {
     console.log('----Passo 3');
     let filter = filters[operador.c_symbol];
 
-    let quantity3 = response3.cummulativeQuoteQty;// - response3.fills[0].commission;
+    let quantity3 = response3.cummulativeQuoteQty - response3.fills[0].commission;
     if (operador.b_step_type == 'BUY') {
-      quantity3 = response3.executedQty;// - response3.fills[0].commission;
+      quantity3 = response3.executedQty - response3.fills[0].commission;
     }
     console.log(quantity3);
     console.log(operador.c_symbol);
@@ -320,6 +322,7 @@ var opera = function(fase) {
     if (operador.c_step_type == 'BUY') {  
 
       quantity3 = Math.floor(quantity3 / filter.tickSize) * filter.tickSize;
+      quantity3 = quantity3.toFixed(8);
       console.log(quantity3);
       //quantity3 = parseFloat(quantity3).toFixed(8);
       if (quantity3 < filter.tickSize) {
@@ -345,6 +348,7 @@ var opera = function(fase) {
     else {
 
       quantity3 = Math.floor(quantity3 / filter.stepSize) * filter.stepSize;
+      quantity3 = quantity3.toFixed(8);
       console.log(quantity3);
       //quantity3 = parseFloat(quantity3).toFixed(8);
       if (quantity3 < filter.minQty) {
@@ -354,8 +358,10 @@ var opera = function(fase) {
         return false;
       }
 
-      binance.marketSell(operador.c_symbol, false,{type:'MARKET', quoteOrderQty: quantity3} ,(error, response) => {
+      binance.marketSell(operador.c_symbol, parseFloat(quantity3) ,(error, response) => {
         if (error != null) {
+          
+          console.info("Error", error );
           console.info("Error", error.body);
           retorno.final = true;
           retorno.error = error.body;

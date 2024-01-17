@@ -55,14 +55,14 @@ wss.on('connection', function connection(ws) {
       console.log(json);
       valorentrada = json.quantity;
       
-      const binance = new Binance().options({        
+      const binance2 = new Binance().options({        
         APIKEY: json.APIKEY,
         APISECRET: json.APISECRET,
         'family': 4/*,
         urls:{base:"https://testnet.binance.vision/api/"}*/
       });      
       
-      binance.exchangeInfo(function(error, data) {
+      binance2.exchangeInfo(function(error, data) {
         for ( let obj of data.symbols ) {
           //if (obj.symbol == 'LINAUSDT') { console.log(obj); }
           let filtro = {status: obj.status};
@@ -86,109 +86,109 @@ wss.on('connection', function connection(ws) {
           filters[obj.symbol] = filtro;
         }
         //console.log(filters['LINAUSDT']);
-      });
+      
 
-      finaliza = false;
-      this.dbHelpers = new DBHelpers();
-      this.pairRanker = new PairRanker();
+        finaliza = false;
+        this.dbHelpers = new DBHelpers();
+        this.pairRanker = new PairRanker();
 
-      var ctrl = {
-        options: {
-          UI: {
-            title: 'Top Potential Arbitrage Triplets, via: ' + process.env.binanceColumns
-          },
-          arbitrage: {
-            paths: json.binanceColumns.split(','),
-            start: json.binanceStartingPoint
+        var ctrl = {
+          options: {
+            UI: {
+              title: 'Top Potential Arbitrage Triplets, via: ' + process.env.binanceColumns
+            },
+            arbitrage: {
+              paths: json.binanceColumns.split(','),
+              start: json.binanceStartingPoint
+            },
+            storage: {
+              logHistory: false
+            },
+            trading: {
+              paperOnly: true,
+              // only candidates with over x% gain potential are queued for trading
+              minQueuePercentageThreshold: 3,
+              // how many times we need to see the same opportunity before deciding to act on it
+              minHitsThreshold: 5
+            }
           },
           storage: {
-            logHistory: false
+            trading: {
+            // queued triplets
+              queue: [],
+              // actively trading triplets
+              active: []
+            },
+            candidates: [],
+            streams: [],
+            pairRanks: []
           },
-          trading: {
-            paperOnly: true,
-            // only candidates with over x% gain potential are queued for trading
-            minQueuePercentageThreshold: 3,
-            // how many times we need to see the same opportunity before deciding to act on it
-            minHitsThreshold: 5
-          }
-        },
-        storage: {
-          trading: {
-          // queued triplets
-            queue: [],
-            // actively trading triplets
-            active: []
-          },
-          candidates: [],
-          streams: [],
-          pairRanks: []
-        },
-        logger: logger,
-        exchange: exchangeAPI
-      };
+          logger: logger,
+          exchange: exchangeAPI
+        };
 
-      // every pingback from the websocket(s)
-      ctrl.storage.streamTick = (stream, streamID) => {
-        ctrl.storage.streams[streamID] = stream;
+        // every pingback from the websocket(s)
+        ctrl.storage.streamTick = (stream, streamID) => {
+          ctrl.storage.streams[streamID] = stream;
 
-        if (streamID == 'allMarketTickers') {
-          // Run logic to check for arbitrage opportunities
-          ctrl.storage.candidates = ctrl.currencyCore.getDynamicCandidatesFromStream(stream, ctrl.options.arbitrage);
+          if (streamID == 'allMarketTickers') {
+            // Run logic to check for arbitrage opportunities
+            ctrl.storage.candidates = ctrl.currencyCore.getDynamicCandidatesFromStream(stream, ctrl.options.arbitrage);
 
-          // Run logic to check for each pairs ranking
-          var pairToTrade = this.pairRanker.getPairRanking(ctrl.storage.candidates, ctrl.storage.pairRanks, ctrl, ctrl.logger);
-          if (pairToTrade != 'none') {
-            // console.log("<----GO TRADE---->");
-          }
-
-          // queue potential trades
-          if (this.tradingCore)
-            this.tradingCore.updateCandidateQueue(stream, ctrl.storage.candidates, ctrl.storage.trading.queue);
-
-          if (retorno.final != undefined) {
-            retorno.valor = json.quantity;
-            retorno.valorfinal = valorentrada;
-            ws.send(JSON.stringify(retorno));
-            retorno = {};
-          }
-          ctrl.storage.candidates.every(function (item){
-            var rate = ((item.rate - 1)* 100);
-            var fees2 = rate * 0.1; //other
-            var fRate2 = rate - fees2;
-            if (fRate2 > parseFloat(json.perc) && !operando && !finaliza) {
-              operando = true;   
-              finaliza = true; // Vamos parar com a primeira operação           
-              ws.send(JSON.stringify(item));
-              operador = item;
-              //console.log(item);
-              opera(1);
-              return false;
+            // Run logic to check for each pairs ranking
+            var pairToTrade = this.pairRanker.getPairRanking(ctrl.storage.candidates, ctrl.storage.pairRanks, ctrl, ctrl.logger);
+            if (pairToTrade != 'none') {
+              // console.log("<----GO TRADE---->");
             }
-            else {
-              return true;
-            }            
-          }); 
-          //ws.send(JSON.stringify(ctrl.storage.candidates));
-          // update UI with latest values per currency
-          //ctrl.UI.updateArbitageOpportunities(ctrl.storage.candidates);
 
-          if (ctrl.options.storage.logHistory) {
-            // Log arbitrage data to DB, if enabled
-            this.dbHelpers.saveArbRows(ctrl.storage.candidates, ctrl.storage.db, ctrl.logger);
-            this.dbHelpers.saveRawTick(stream.arr, ctrl.storage.db, ctrl.logger);
+            // queue potential trades
+            if (this.tradingCore)
+              this.tradingCore.updateCandidateQueue(stream, ctrl.storage.candidates, ctrl.storage.trading.queue);
+
+            if (retorno.final != undefined) {
+              retorno.valor = valorentrada;
+              ws.send(JSON.stringify(retorno));
+              retorno = {};
+            }
+            ctrl.storage.candidates.every(function (item){
+              var rate = ((item.rate - 1)* 100);
+              var fees2 = rate * 0.1; //other
+              var fRate2 = rate - fees2;
+              if (fRate2 > parseFloat(json.perc) && !operando && !finaliza) {
+                operando = true;   
+                finaliza = true; // Vamos parar com a primeira operação           
+                ws.send(JSON.stringify(item));
+                operador = item;
+                //console.log(item);
+                opera(1);
+                return false;
+              }
+              else {
+                return true;
+              }            
+            }); 
+            //ws.send(JSON.stringify(ctrl.storage.candidates));
+            // update UI with latest values per currency
+            //ctrl.UI.updateArbitageOpportunities(ctrl.storage.candidates);
+
+            if (ctrl.options.storage.logHistory) {
+              // Log arbitrage data to DB, if enabled
+              this.dbHelpers.saveArbRows(ctrl.storage.candidates, ctrl.storage.db, ctrl.logger);
+              this.dbHelpers.saveRawTick(stream.arr, ctrl.storage.db, ctrl.logger);
+            }
+
           }
-
         }
-      }
 
-      // loading the CurrencyCore starts the streams
-      ctrl.logger.info('--- Starting Currency Streams');
-      ctrl.currencyCore = require('./lib/CurrencyCore')(ctrl);
+        // loading the CurrencyCore starts the streams
+        ctrl.logger.info('--- Starting Currency Streams');
+        ctrl.currencyCore = require('./lib/CurrencyCore')(ctrl);
 
-      this.tradingCore = TradingCore(ctrl.options.trading, ctrl.currencyCore);
-      // use this for callbacks for ongoing trade workflows
-      // this.tradingCore.on('queueUpdated', (queue, timeStarted)=>{  });
-      // this.tradingCore.on('newTradeQueued', (candidate, timeStarted)=>{  });
+        this.tradingCore = TradingCore(ctrl.options.trading, ctrl.currencyCore);
+        // use this for callbacks for ongoing trade workflows
+        // this.tradingCore.on('queueUpdated', (queue, timeStarted)=>{  });
+        // this.tradingCore.on('newTradeQueued', (candidate, timeStarted)=>{  });
+      });
     } catch (error) {
       console.error(error);
       ws.send('{"error":"'+error+'"}');
@@ -204,20 +204,23 @@ var opera = function(fase) {
   const binance = new Binance().options({
     APIKEY: json.APIKEY,
     APISECRET: json.APISECRET,
-    'family': 4
-    //urls:{base:"https://testnet.binance.vision/api/"}
+    'family': 4,
+    urls:{base:"https://testnet.binance.vision/api/"}
   });
   /*APIKEY: 'MbB6qWbP2yk7Pwd1pY0zvBhQBSUcBG5qn0ZBRlHnhRjBnes4dxQSCw4zL4yL7nNa',
   APISECRET: 'FSDsSEZQHIWLlP3duXF3e4X52LchiMrl5d2XkgUibPzhEN79dQfNT7odvgMpq5ca',*/
 
   if (fase == 1) {
 
-    /*console.log('----Passo 1');
-    console.log(valorentrada);
-    console.log(operador.a_symbol);*/
+    console.log('----Passo 1: '+operador.a_symbol+': '+operador.a_step_type);
+    let filter = filters[operador.a_symbol];
 
     if (operador.a_step_type == 'BUY') {
-      binance.marketBuy(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: valorentrada} ,(error, response) => {
+
+      valorentrada = Math.floor(valorentrada / filter.tickSize) * filter.tickSize;
+      valorentrada = valorentrada.toFixed(8);      
+
+      binance.marketBuy(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: parseFloat(valorentrada), recvWindow: 60000} ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
           retorno.final = true;
@@ -231,6 +234,10 @@ var opera = function(fase) {
       });
     }
     else {
+
+      valorentrada = Math.floor(valorentrada / filter.stepSize) * filter.stepSize;
+      valorentrada = valorentrada.toFixed(8);
+
       binance.marketSell(operador.a_symbol,  parseFloat(valorentrada) ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
@@ -268,7 +275,7 @@ var opera = function(fase) {
           retorno.error = error.body;
         return false;
       }
-      binance.marketBuy(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: quantity2} ,(error, response) => {
+      binance.marketBuy(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: parseFloat(quantity2), recvWindow: 60000} ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
           retorno.final = true;
@@ -331,7 +338,7 @@ var opera = function(fase) {
         retorno.error = error.body;
         return false;
       }
-      binance.marketBuy(operador.c_symbol, false,{type:'MARKET', quoteOrderQty: quantity3} ,(error, response) => {
+      binance.marketBuy(operador.c_symbol, false,{type:'MARKET', quoteOrderQty: parseFloat(quantity3)} ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
           retorno.final = true;
@@ -369,11 +376,10 @@ var opera = function(fase) {
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
           console.info('---------------------------');
-          valorentrada = response.cummulativeQuoteQty;
+          retorno.valorfinal = response.cummulativeQuoteQty;
           if (operador.b_step_type == 'BUY') {
-            valorentrada = response3.executedQty;
+            retorno.valorfinal = response3.executedQty;
           }
-          retorno.final = true;
           operando = false;
         }
       });

@@ -58,8 +58,8 @@ wss.on('connection', function connection(ws) {
       const binance2 = new Binance().options({        
         APIKEY: json.APIKEY,
         APISECRET: json.APISECRET,
-        'family': 4/*,
-        urls:{base:"https://testnet.binance.vision/api/"}*/
+        'family': 4,
+        urls:{base:"https://testnet.binance.vision/api/"}
       });      
       
       binance2.exchangeInfo(function(error, data) {
@@ -227,7 +227,8 @@ var opera = function(fase) {
           retorno.error = error.body;
         }
         else {
-          console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
+          console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty);
+          valorentrada = response.cummulativeQuoteQty;
           response2 = response;
           opera(2)
         }
@@ -245,6 +246,7 @@ var opera = function(fase) {
           retorno.error = error.body;
         }
         else {
+          valorentrada = response.executedQty;
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
           response2 = response;
           opera(2)
@@ -262,7 +264,7 @@ var opera = function(fase) {
       quantity2 = response2.executedQty - response2.fills[0].commission;
     }
     console.log(operador.b_symbol);
-    console.log(filter);
+    //console.log(filter);
     if (operador.b_step_type == 'BUY') {  
 
       quantity2 = Math.floor(quantity2 / filter.tickSize) * filter.tickSize;
@@ -347,7 +349,8 @@ var opera = function(fase) {
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
           console.info('---------------------------');
-          valorentrada = response.executedQty;
+          retorno.valorfinal = response.executedQty;
+          retorno.final = true;
           operando = false;
         }
       });
@@ -377,9 +380,7 @@ var opera = function(fase) {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
           console.info('---------------------------');
           retorno.valorfinal = response.cummulativeQuoteQty;
-          if (operador.b_step_type == 'BUY') {
-            retorno.valorfinal = response3.executedQty;
-          }
+          retorno.final = true;
           operando = false;
         }
       });

@@ -25,6 +25,7 @@ logger.info('--- Loading Exchange API');
 
 var valorentrada = 0;
 var operando = false;
+var infos;
 var operador;
 var response2;
 var response3;
@@ -51,8 +52,23 @@ if (process.env.activeExchange == 'binance'){
 wss.on('connection', function connection(ws) {
   ws.on('message', function message(data) {
     try {
-      json = JSON.parse(data);
-      console.log(json);
+      infos = JSON.parse(data);
+      console.log(infos);
+
+      if (infos.quantity == undefined) {
+        if (!operando) {
+          operando = true;
+          operador = infos;
+          opera(1);
+        }
+        else {
+          ws.send(JSON.stringify({error:'Já está em operação, aguarde finalizar.'}));
+        }
+        
+      }
+      else {
+        json = infos;
+      }
       valorentrada = json.quantity;
       
       const binance2 = new Binance().options({        
@@ -150,7 +166,7 @@ wss.on('connection', function connection(ws) {
               ws.send(JSON.stringify(retorno));
               retorno = {};
             }
-            ctrl.storage.candidates.every(function (item){
+            /*ctrl.storage.candidates.every(function (item){
               var rate = ((item.rate - 1)* 100);
               var fees2 = rate * 0.1; //other
               var fRate2 = rate - fees2;
@@ -160,14 +176,14 @@ wss.on('connection', function connection(ws) {
                 ws.send(JSON.stringify(item));
                 operador = item;
                 //console.log(item);
-                opera(1);
+                //opera(1);
                 return false;
               }
               else {
                 return true;
               }            
-            }); 
-            //ws.send(JSON.stringify(ctrl.storage.candidates));
+            }); */
+            ws.send(JSON.stringify(ctrl.storage.candidates));
             // update UI with latest values per currency
             //ctrl.UI.updateArbitageOpportunities(ctrl.storage.candidates);
 
@@ -205,6 +221,7 @@ var opera = function(fase) {
     APIKEY: json.APIKEY,
     APISECRET: json.APISECRET,
     'family': 4,
+    recvWindow: 60000,
     urls:{base:"https://testnet.binance.vision/api/"}
   });
   /*APIKEY: 'MbB6qWbP2yk7Pwd1pY0zvBhQBSUcBG5qn0ZBRlHnhRjBnes4dxQSCw4zL4yL7nNa',
@@ -225,6 +242,7 @@ var opera = function(fase) {
           console.info("Error", error.body);
           retorno.final = true;
           retorno.error = error.body;
+          operando = false;
         }
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty);
@@ -244,6 +262,7 @@ var opera = function(fase) {
           console.info("Error", error.body);
           retorno.final = true;
           retorno.error = error.body;
+          operando = false;
         }
         else {
           valorentrada = response.executedQty;
@@ -274,7 +293,8 @@ var opera = function(fase) {
       if (quantity2 < filter.tickSize) {
         console.log('Quantidade mínima não atingida.');
         retorno.final = true;
-          retorno.error = error.body;
+        retorno.error = error.body;
+        operando = false;
         return false;
       }
       binance.marketBuy(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: parseFloat(quantity2), recvWindow: 60000} ,(error, response) => {
@@ -282,6 +302,7 @@ var opera = function(fase) {
           console.info("Error", error.body);
           retorno.final = true;
           retorno.error = error.body;
+          operando = false;
         }
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
@@ -300,6 +321,7 @@ var opera = function(fase) {
         console.log('Quantidade mínima não atingida.');
         retorno.final = true;
         retorno.error = error.body;
+        operando = false;
         return false;
       }
       binance.marketSell(operador.b_symbol,  parseFloat(quantity2) ,(error, response) => {
@@ -307,6 +329,7 @@ var opera = function(fase) {
           console.info("Error", error.body);
           retorno.final = true;
           retorno.error = error.body;
+          operando = false;
         }
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
@@ -345,6 +368,7 @@ var opera = function(fase) {
           console.info("Error", error.body);
           retorno.final = true;
           retorno.error = error.body;
+          operando = false;
         }
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
@@ -365,6 +389,7 @@ var opera = function(fase) {
         console.log('Quantidade mínima não atingida.');
         retorno.final = true;
         retorno.error = error.body;
+        operando = false;
         return false;
       }
 
@@ -375,6 +400,7 @@ var opera = function(fase) {
           console.info("Error", error.body);
           retorno.final = true;
           retorno.error = error.body;
+          operando = false;
         }
         else {
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)

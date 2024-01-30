@@ -55,6 +55,24 @@ wss.on('connection', function connection(ws) {
       infos = JSON.parse(data);
       console.log(infos);
 
+      const binance2 = new Binance().options({        
+        APIKEY: infos.APIKEY,
+        APISECRET: infos.APISECRET,
+        'family': 4,
+        recvWindow: 60000,
+        urls:{base:"https://testnet.binance.vision/api/"}
+      });
+
+      if (infos.saldo != undefined) {
+        binance2.balance((error, balances) => {
+          if ( error ) return console.error(error.body);
+          //console.info("balances()", balances);
+          ws.send(JSON.stringify({saldo:true,balance:balances}));
+          //console.info("ETH balance: ", balances.ETH.available);
+        });
+        return false;
+      }
+
       if (infos.quantity == undefined) {
         if (!operando) {
           operando = true;
@@ -69,14 +87,7 @@ wss.on('connection', function connection(ws) {
       else {
         json = infos;
       }
-      valorentrada = json.quantity;
-      
-      const binance2 = new Binance().options({        
-        APIKEY: json.APIKEY,
-        APISECRET: json.APISECRET,
-        'family': 4,
-        urls:{base:"https://testnet.binance.vision/api/"}
-      });      
+      valorentrada = json.quantity;      
       
       binance2.exchangeInfo(function(error, data) {
         for ( let obj of data.symbols ) {
@@ -143,9 +154,24 @@ wss.on('connection', function connection(ws) {
           exchange: exchangeAPI
         };
 
+        var counter = 0;
+
         // every pingback from the websocket(s)
         ctrl.storage.streamTick = (stream, streamID) => {
           ctrl.storage.streams[streamID] = stream;
+
+          if (counter == 0) {
+            binance2.balance((error, balances) => {
+              if ( error ) return console.error(error.body);
+              //console.info("balances()", balances);
+              ws.send(JSON.stringify({saldo:true,balance:balances}));
+              //console.info("ETH balance: ", balances.ETH.available);
+            });
+          }
+          counter++;
+          if (counter > 10) {
+            counter = 0;
+          }
 
           if (streamID == 'allMarketTickers') {
             // Run logic to check for arbitrage opportunities

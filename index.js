@@ -33,6 +33,8 @@ var json;
 var finaliza = false;
 var filters = {};
 var retorno = {};
+var apiKey = '';
+var secret = '';
 
 // make exchange module dynamic later
 if (process.env.activeExchange == 'binance'){
@@ -55,9 +57,16 @@ wss.on('connection', function connection(ws) {
       infos = JSON.parse(data);
       console.log(infos);
 
+      if (infos.APIKEY != undefined) {
+        apiKey = infos.APIKEY;
+      }
+      if (infos.APISECRET != undefined) {
+        secret = infos.APISECRET;
+      }
+
       const binance2 = new Binance().options({        
-        APIKEY: infos.APIKEY,
-        APISECRET: infos.APISECRET,
+        APIKEY: apiKey,
+        APISECRET: secret,
         'family': 4,
         recvWindow: 60000,
         urls:{base:"https://testnet.binance.vision/api/"}
@@ -77,7 +86,7 @@ wss.on('connection', function connection(ws) {
         if (!operando) {
           operando = true;
           operador = infos;
-          opera(1);
+          //opera(1);
         }
         else {
           ws.send(JSON.stringify({error:'Já está em operação, aguarde finalizar.'}));
@@ -244,8 +253,8 @@ wss.on('connection', function connection(ws) {
 var opera = function(fase) {  
 
   const binance = new Binance().options({
-    APIKEY: json.APIKEY,
-    APISECRET: json.APISECRET,
+    APIKEY: apiKey,
+    APISECRET: secret,
     'family': 4,
     recvWindow: 60000,
     urls:{base:"https://testnet.binance.vision/api/"}

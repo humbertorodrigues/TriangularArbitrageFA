@@ -86,7 +86,7 @@ wss.on('connection', function connection(ws) {
         if (!operando) {
           operando = true;
           operador = infos;
-          //opera(1);
+          opera(1);
         }
         else {
           ws.send(JSON.stringify({error:'Já está em operação, aguarde finalizar.'}));
@@ -272,7 +272,7 @@ var opera = function(fase) {
       valorentrada = Math.floor(valorentrada / filter.tickSize) * filter.tickSize;
       valorentrada = valorentrada.toFixed(8);      
 
-      binance.marketBuy(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: parseFloat(valorentrada), recvWindow: 60000} ,(error, response) => {
+      binance.marketBuy(operador.a_symbol, false,{type:'MARKET', quoteOrderQty: parseFloat(valorentrada)} ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
           retorno.final = true;
@@ -280,6 +280,12 @@ var opera = function(fase) {
           operando = false;
         }
         else {
+          retorno.passo1 = {
+            moeda: operador.a_symbol,
+            operacao: 'BUY',
+            entrada: response.cummulativeQuoteQty,
+            saida: response.executedQty
+          };
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty);
           valorentrada = response.cummulativeQuoteQty;
           response2 = response;
@@ -300,6 +306,12 @@ var opera = function(fase) {
           operando = false;
         }
         else {
+          retorno.passo1 = {
+            moeda: operador.a_symbol,
+            operacao: 'SELL',
+            entrada: response.executedQty,
+            saida: response.cummulativeQuoteQty
+          };
           valorentrada = response.executedQty;
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
           response2 = response;
@@ -332,7 +344,7 @@ var opera = function(fase) {
         operando = false;
         return false;
       }
-      binance.marketBuy(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: parseFloat(quantity2), recvWindow: 60000} ,(error, response) => {
+      binance.marketBuy(operador.b_symbol, false,{type:'MARKET', quoteOrderQty: parseFloat(quantity2)} ,(error, response) => {
         if (error != null) {
           console.info("Error", error.body);
           retorno.final = true;
@@ -340,6 +352,12 @@ var opera = function(fase) {
           operando = false;
         }
         else {
+          retorno.passo2 = {
+            moeda: operador.b_symbol,
+            operacao: 'BUY',
+            entrada: response.cummulativeQuoteQty,
+            saida: response.executedQty
+          };
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
           response3 = response;
           opera(3)
@@ -367,6 +385,12 @@ var opera = function(fase) {
           operando = false;
         }
         else {
+          retorno.passo2 = {
+            moeda: operador.b_symbol,
+            operacao: 'SELL',
+            entrada: response.executedQty,
+            saida: response.cummulativeQuoteQty
+          };
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
           response3 = response;
           opera(3)
@@ -406,6 +430,12 @@ var opera = function(fase) {
           operando = false;
         }
         else {
+          retorno.passo3 = {
+            moeda: operador.c_symbol,
+            operacao: 'BUY',
+            entrada: response.cummulativeQuoteQty,
+            saida: response.executedQty
+          };
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
           console.info('---------------------------');
           retorno.valorfinal = response.executedQty;
@@ -438,6 +468,12 @@ var opera = function(fase) {
           operando = false;
         }
         else {
+          retorno.passo3 = {
+            moeda: operador.c_symbol,
+            operacao: 'SELL',
+            entrada: response.executedQty,
+            saida: response.cummulativeQuoteQty
+          };
           console.info('cummulativeQuoteQty: '+response.cummulativeQuoteQty+' / executedQty: '+response.executedQty)
           console.info('---------------------------');
           retorno.valorfinal = response.cummulativeQuoteQty;

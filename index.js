@@ -74,7 +74,7 @@ wss.on('connection', function connection(ws) {
 
       if (infos.saldo != undefined) {
         binance2.balance((error, balances) => {
-          if ( error ) return console.error(error.body);
+          if ( error ) {return console.error(error.body);}
           //console.info("balances()", balances);
           ws.send(JSON.stringify({saldo:true,balance:balances}));
           //console.info("ETH balance: ", balances.ETH.available);
@@ -99,6 +99,11 @@ wss.on('connection', function connection(ws) {
       valorentrada = json.quantity;      
       
       binance2.exchangeInfo(function(error, data) {
+        if ( error ) {
+          console.error(error.body);
+          ws.send('{"error":"Falha ao iniciar a operação."}');
+          return false;
+        }
         for ( let obj of data.symbols ) {
           //if (obj.symbol == 'LINAUSDT') { console.log(obj); }
           let filtro = {status: obj.status};
